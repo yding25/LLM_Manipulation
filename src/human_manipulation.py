@@ -25,6 +25,8 @@ from curobo.util.logger import setup_curobo_logger
 from curobo.util_file import get_robot_configs_path, get_world_configs_path, join_path, load_yaml
 from curobo.wrap.reacher.motion_gen import MotionGen, MotionGenConfig, MotionGenPlanConfig
 
+import xml.etree.ElementTree as ET
+
 USE_HUMAN = True
 
 
@@ -565,12 +567,50 @@ if __name__ == "__main__":
     planned_time = 0
     
 
-    def parse_useful_urdf(path):
-        object = URDF.load(object_path)
-        urdf_info = {
+    # def parse_useful_urdf(path):
+    #     object = URDF.load(object_path)
+    #     urdf_info = {
             
-        }
+    #     }
+    #     for joint in object.actuated_joints:
+    #         urdf_info["joint_name"] = joint.name
+    #         urdf_info["pose_from_parent"] = joint.origin.reshape(-1).tolist()
+    #         urdf_info["axis"] = joint.axis.tolist()
+    #         urdf_info["limit"] = [joint.limit.lower, joint.limit.upper]
+    #         urdf_info["joint_type"] = joint.joint_type
+    #     return urdf_info
+    
+    def add_default_effort_velocity(urdf_path, default_effort="100.0", default_velocity="1.0"):
+        tree = ET.parse(urdf_path)
+        root = tree.getroot()
+        
+        for joint in root.findall('joint'):
+            limit = joint.find('limit')
+            if limit is not None:
+                if 'effort' not in limit.attrib:
+                    limit.set('effort', default_effort)
+                if 'velocity' not in limit.attrib:
+                    limit.set('velocity', default_velocity)
+        
+        tree.write(urdf_path, encoding="utf-8", xml_declaration=True)
+
+    def parse_useful_urdf(object_path):        
+        # 在加载 URDF 文件之前添加默认的 effort 和 velocity 属性
+        add_default_effort_velocity(object_path)
+
+        DEFAULT_EFFORT_VALUE = 100.0  # 可以根据实际需求设置默认值
+        DEFAULT_VELOCITY_VALUE = 1.0  # 可以根据实际需求设置默认值
+
+        object = URDF.load(object_path)
+        urdf_info = {}
         for joint in object.actuated_joints:
+            if joint.limit is None:
+                continue  # 如果关节没有 limit 属性，跳过这个关节
+
+            if joint.limit.effort is None:
+                joint.limit.effort = DEFAULT_EFFORT_VALUE  # 设置默认 effort 值
+            if joint.limit.velocity is None:
+                joint.limit.velocity = DEFAULT_VELOCITY_VALUE  # 设置默认 velocity 值
             urdf_info["joint_name"] = joint.name
             urdf_info["pose_from_parent"] = joint.origin.reshape(-1).tolist()
             urdf_info["axis"] = joint.axis.tolist()

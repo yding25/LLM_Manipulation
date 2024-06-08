@@ -1,5 +1,97 @@
 import json
-from deoxys.utils.transform_utils import quat2mat,axisangle2quat,euler2mat
+# from deoxys.utils.transform_utils import quat2mat,axisangle2quat,euler2mat
+import math
+
+import numpy as np
+
+def quat2mat(quaternion):
+    """
+    Converts given quaternion (x, y, z, w) to matrix.
+
+    Args:
+        quaternion: vec4 float angles
+
+    Returns:
+        3x3 rotation matrix
+    """
+
+    # awkward semantics for use with numba
+    inds = np.array([3, 0, 1, 2])
+    q = np.asarray(quaternion).copy().astype(np.float32)[inds]
+
+    n = np.dot(q, q)
+    if n < (np.finfo(float).eps * 4.0):
+        return np.identity(3)
+    q *= math.sqrt(2.0 / n)
+    q2 = np.outer(q, q)
+    return np.array(
+        [
+            [1.0 - q2[2, 2] - q2[3, 3], q2[1, 2] - q2[3, 0], q2[1, 3] + q2[2, 0]],
+            [q2[1, 2] + q2[3, 0], 1.0 - q2[1, 1] - q2[3, 3], q2[2, 3] - q2[1, 0]],
+            [q2[1, 3] - q2[2, 0], q2[2, 3] + q2[1, 0], 1.0 - q2[1, 1] - q2[2, 2]],
+        ]
+    )
+
+def axisangle2quat(vec):
+    """
+    Converts scaled axis-angle to quat.
+
+    Args:
+        vec (np.array): (ax,ay,az) axis-angle exponential coordinates
+
+    Returns:
+        np.array: (x,y,z,w) vec4 float angles
+    """
+    # Grab angle
+    angle = np.linalg.norm(vec)
+
+    # handle zero-rotation case
+    if math.isclose(angle, 0.0):
+        return np.array([0.0, 0.0, 0.0, 1.0])
+
+    # make sure that axis is a unit vector
+    axis = vec / angle
+
+    q = np.zeros(4)
+    q[3] = np.cos(angle / 2.0)
+    q[:3] = axis * np.sin(angle / 2.0)
+    return q
+
+def euler2mat(euler):
+    """
+    Converts euler angles into rotation matrix form
+
+    Args:
+        euler (np.array): (r,p,y) angles
+
+    Returns:
+        np.array: 3x3 rotation matrix
+
+    Raises:
+        AssertionError: [Invalid input shape]
+    """
+
+    euler = np.asarray(euler, dtype=np.float64)
+    assert euler.shape[-1] == 3, "Invalid shaped euler {}".format(euler)
+
+    ai, aj, ak = -euler[..., 2], -euler[..., 1], -euler[..., 0]
+    si, sj, sk = np.sin(ai), np.sin(aj), np.sin(ak)
+    ci, cj, ck = np.cos(ai), np.cos(aj), np.cos(ak)
+    cc, cs = ci * ck, ci * sk
+    sc, ss = si * ck, si * sk
+
+    mat = np.empty(euler.shape[:-1] + (3, 3), dtype=np.float64)
+    mat[..., 2, 2] = cj * ck
+    mat[..., 2, 1] = sj * sc - cs
+    mat[..., 2, 0] = sj * cc + ss
+    mat[..., 1, 2] = cj * sk
+    mat[..., 1, 1] = sj * ss + cc
+    mat[..., 1, 0] = sj * cs - sc
+    mat[..., 0, 2] = -sj
+    mat[..., 0, 1] = cj * si
+    mat[..., 0, 0] = cj * ci
+    return mat
+
 class Prompt:
     def __init__(self, content = None):
         if content is not None:
