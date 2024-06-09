@@ -73,7 +73,7 @@ imageio==2.9.0
 importlib-metadata==4.11.4
 importlib-resources==5.12.0
 interactive-markers==1.12.0
--e git+https://github.com/yding25/LLM_articulated_object_manipulation.git@ee96dd8bafbdc8efec490d35e5fab650e7b6481a#egg=isaacgym&subdirectory=isaacgym/python
+-e git+https://github.com/yding25/LLM_Manipulation.git@ee96dd8bafbdc8efec490d35e5fab650e7b6481a#egg=isaacgym&subdirectory=isaacgym/python
 joint-state-publisher==1.15.1
 joint-state-publisher-gui==1.15.1
 jsonschema==4.17.3

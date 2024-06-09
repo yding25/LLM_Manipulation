@@ -12,7 +12,7 @@ import json
 import yaml
 import os
 import cv2
-import moveit_msgs.msg
+#import moveit_msgs.msg
 
 
 import torch
